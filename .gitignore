@@ -1,0 +1,44 @@
+# Secrets — NEVER commit these
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+
+# Test / lint caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ML model weights (large files auto-downloaded at runtime)
+*.pt
+*.pth
+*.onnx
+runs/
+
+# Sentence-transformers / HuggingFace cache (auto-downloaded)
+# These live in ~/.cache/huggingface — no need to ignore here
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Compiled C extensions
+*.so

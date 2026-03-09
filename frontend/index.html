@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal AI Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <span class="logo">🧠</span>
+            <h1 class="app-title">Personal AI Assistant</h1>
+        </div>
+        <div class="header-right">
+            <button id="theme-toggle" class="theme-btn" title="Toggle theme">
+                <span class="theme-icon">🌙</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- API Key Bar -->
+    <div class="api-bar">
+        <div class="api-bar-inner">
+            <span class="api-label">🔑 API Key</span>
+            <input type="password" id="api-key-input" class="api-input" placeholder="Enter your API key...">
+            <button id="api-key-toggle" class="api-toggle-btn" title="Show/Hide key">👁</button>
+            <span id="api-status" class="api-status"></span>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Tab Navigation -->
+        <nav class="tabs">
+            <button class="tab active" data-tab="upload">
+                <span class="tab-icon">📤</span> Upload
+            </button>
+            <button class="tab" data-tab="search">
+                <span class="tab-icon">🔍</span> Search
+            </button>
+            <button class="tab" data-tab="ask">
+                <span class="tab-icon">💬</span> Ask
+            </button>
+        </nav>
+
+        <!-- Upload Panel -->
+        <section id="panel-upload" class="panel active">
+            <div class="upload-zone" id="drop-zone">
+                <div class="upload-icon">📁</div>
+                <p class="upload-text">Drag & drop files here</p>
+                <p class="upload-sub">or click to browse</p>
+                <p class="upload-formats">PDF, DOCX, TXT, MD, Images (JPG, PNG, WebP)</p>
+                <input type="file" id="file-input" multiple accept=".pdf,.docx,.txt,.md,.csv,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp" hidden>
+            </div>
+
+            <div class="upload-options">
+                <div class="input-group">
+                    <label for="tags-input">Tags</label>
+                    <input type="text" id="tags-input" class="input" placeholder="e.g. work, project, finance">
+                </div>
+                <div class="input-group">
+                    <label for="location-input">Location</label>
+                    <input type="text" id="location-input" class="input" placeholder="e.g. Jaipur, Delhi">
+                </div>
+            </div>
+
+            <button id="upload-btn" class="btn btn-primary" disabled>
+                <span class="btn-icon">⬆️</span> Upload Files
+            </button>
+
+            <!-- Upload Progress -->
+            <div id="upload-progress" class="progress-area" hidden>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <p class="progress-text" id="progress-text">Uploading...</p>
+            </div>
+
+            <!-- Upload Results -->
+            <div id="upload-results" class="results-area"></div>
+        </section>
+
+        <!-- Search Panel -->
+        <section id="panel-search" class="panel">
+            <div class="search-bar">
+                <input type="text" id="search-input" class="input search-input" placeholder="Search your documents and images...">
+                <button id="search-btn" class="btn btn-primary">
+                    <span class="btn-icon">🔍</span> Search
+                </button>
+            </div>
+            <div class="search-options">
+                <div class="input-group inline">
+                    <label for="filter-type">File type</label>
+                    <select id="filter-type" class="input select">
+                        <option value="">All types</option>
+                        <option value="pdf">PDF</option>
+                        <option value="docx">DOCX</option>
+                        <option value="text">Text</option>
+                        <option value="image">Image</option>
+                    </select>
+                </div>
+                <div class="input-group inline">
+                    <label for="top-k">Results</label>
+                    <select id="top-k" class="input select">
+                        <option value="3">3</option>
+                        <option value="5" selected>5</option>
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                    </select>
+                </div>
+            </div>
+            <div id="search-results" class="results-area"></div>
+        </section>
+
+        <!-- Ask Panel -->
+        <section id="panel-ask" class="panel">
+            <div class="ask-area">
+                <textarea id="ask-input" class="input textarea" placeholder="Ask a question about your uploaded data..." rows="3"></textarea>
+                <button id="ask-btn" class="btn btn-primary">
+                    <span class="btn-icon">💬</span> Ask AI
+                </button>
+            </div>
+            <div id="ask-results" class="results-area"></div>
+        </section>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" hidden></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -42,7 +42,11 @@ class EmbeddingService:
                 return cached
 
         model = self._load_model()
-        vector = model.encode(text, normalize_embeddings=True).tolist()
+        import asyncio
+        vector = await asyncio.to_thread(
+            model.encode, text, normalize_embeddings=True
+        )
+        vector = vector.tolist()
 
         # Cache store
         if self._cache:
@@ -71,7 +75,11 @@ class EmbeddingService:
         if to_encode:
             model = self._load_model()
             uncached_texts = [t for _, t in to_encode]
-            vectors = model.encode(uncached_texts, normalize_embeddings=True).tolist()
+            import asyncio
+            vectors = await asyncio.to_thread(
+                model.encode, uncached_texts, normalize_embeddings=True
+            )
+            vectors = vectors.tolist()
             for (orig_idx, text), vector in zip(to_encode, vectors):
                 results[orig_idx] = vector
                 if self._cache:

@@ -19,21 +19,55 @@
             <button id="theme-toggle" class="theme-btn" title="Toggle theme">
                 <span class="theme-icon">🌙</span>
             </button>
+            <div id="auth-buttons" class="auth-buttons">
+                <button id="auth-login-btn" class="btn btn-secondary btn-sm">Sign In / Register</button>
+            </div>
+            <div id="auth-user" class="auth-user" hidden>
+                <span id="auth-email-display" class="auth-email"></span>
+                <button id="auth-logout-btn" class="btn btn-secondary btn-sm">Logout</button>
+            </div>
         </div>
     </header>
 
-    <!-- API Key Bar -->
-    <div class="api-bar">
-        <div class="api-bar-inner">
-            <span class="api-label">🔑 API Key</span>
-            <input type="password" id="api-key-input" class="api-input" placeholder="Enter your API key...">
-            <button id="api-key-toggle" class="api-toggle-btn" title="Show/Hide key">👁</button>
-            <span id="api-status" class="api-status"></span>
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal" hidden>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Authentication</h2>
+                <button id="close-modal-btn" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="auth-tabs">
+                    <button id="tab-login" class="tab auth-tab active">Login</button>
+                    <button id="tab-register" class="tab auth-tab">Register</button>
+                </div>
+                
+                <form id="auth-form" class="auth-form">
+                    <div id="name-group" class="input-group" hidden>
+                        <label for="auth-name">Name</label>
+                        <input type="text" id="auth-name" class="input" placeholder="Your name">
+                    </div>
+                    <div class="input-group">
+                        <label for="auth-email">Email</label>
+                        <input type="email" id="auth-email" class="input" placeholder="you@example.com" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="auth-password">Password</label>
+                        <input type="password" id="auth-password" class="input" placeholder="••••••••" required>
+                    </div>
+                    <div id="confirm-password-group" class="input-group" hidden>
+                        <label for="auth-confirm-password">Confirm Password</label>
+                        <input type="password" id="auth-confirm-password" class="input" placeholder="••••••••">
+                    </div>
+                    <div id="auth-error" class="auth-error" hidden></div>
+                    <button type="submit" id="auth-submit-btn" class="btn btn-primary full-width">Login</button>
+                </form>
+            </div>
         </div>
     </div>
 
     <!-- Main Content -->
-    <main class="main">
+    <main class="main" id="main-content" style="opacity: 0.5; pointer-events: none;">
         <!-- Tab Navigation -->
         <nav class="tabs">
             <button class="tab active" data-tab="upload">
@@ -126,6 +160,25 @@
             </div>
             <div id="ask-results" class="results-area"></div>
         </section>
+        
+        <!-- Bottom Info Container -->
+        <div class="bottom-info-container">
+            <div class="info-card faq-section">
+                <h3>❓ Frequently Asked Questions</h3>
+                <ul class="clickable-list" id="faq-list">
+                    <li>Tell me the name of person whose CV is this</li>
+                    <li>What are the top 3 skills mentioned in the resume?</li>
+                    <li>Extract all email addresses from the uploaded files.</li>
+                </ul>
+            </div>
+            <div class="info-card recent-section">
+                <h3>🕒 Recently Asked Questions</h3>
+                <ul class="clickable-list" id="recent-asks-list">
+                    <li class="empty-state-list">No questions asked recently. Ask something!</li>
+                </ul>
+            </div>
+        </div>
+
     </main>
 
     <!-- Toast Notification -->

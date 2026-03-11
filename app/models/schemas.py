@@ -81,6 +81,7 @@ class ParsedIntent(BaseModel):
     keyword: str | None = None
     date_range: dict | None = None
     tags: list[str] | None = None
+    filename: str | None = None
     requires_reasoning: bool = False
     rephrased_query: str | None = None
 

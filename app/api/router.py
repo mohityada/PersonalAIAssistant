@@ -2,10 +2,11 @@
 
 from fastapi import APIRouter
 
-from app.api import upload, search, ask
+from app.api import upload, search, ask, auth
 
 api_router = APIRouter(prefix="/api/v1")
 
+api_router.include_router(auth.router)
 api_router.include_router(upload.router)
 api_router.include_router(search.router)
 api_router.include_router(ask.router)

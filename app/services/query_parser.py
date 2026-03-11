@@ -17,18 +17,19 @@ You are a query parser for a personal AI assistant. Your job is to extract struc
 
 Respond ONLY with a JSON object matching this schema (no markdown, no extra text):
 {
-  "file_type": "text|pdf|docx|image|md|null",
-  "location": "string or null",
-  "keyword": "string or null",
+  "file_type": "text|pdf|docx|image|md" or null,
+  "location": "string" or null,
+  "keyword": "string" or null,
   "date_range": {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"} or null,
   "tags": ["tag1", "tag2"] or null,
+  "filename": "Exact or partial filename requested by the user, ignoring emojis (e.g., Screenshot 2024.pdf)" or null,
   "requires_reasoning": true/false,
   "rephrased_query": "a clean version of the query for embedding search"
 }
 
 Rules:
-- "requires_reasoning" = true when the user asks WHY, HOW, to SUMMARIZE, COMPARE, or EXPLAIN.
-- "requires_reasoning" = false for simple retrieval (find, show, list, get).
+- "requires_reasoning" = true when the user asks a question (WHO, WHAT, WHERE, WHEN, WHY, HOW), asks to SUMMARIZE, COMPARE, EXPLAIN, EXTRACT, or says "Tell me...".
+- "requires_reasoning" = false ONLY for simple document retrieval (e.g., "find the presentation", "show me files about X", "list my invoices").
 - "file_type" should only be set if the query clearly implies a specific type.
 - "rephrased_query" should be a clear, concise rewording optimised for semantic search.
 """
@@ -66,9 +67,19 @@ class QueryParser:
         )
         response_text = message.content[0].text.strip()
 
+        # Clean up Markdown formatting if Claude returns ```json ... ```
+        clean_text = response_text.strip()
+        if clean_text.startswith("```json"):
+            clean_text = clean_text[7:]
+        elif clean_text.startswith("```"):
+            clean_text = clean_text[3:]
+        if clean_text.endswith("```"):
+            clean_text = clean_text[:-3]
+        clean_text = clean_text.strip()
+
         # Parse JSON response
         try:
-            data = json.loads(response_text)
+            data = json.loads(clean_text)
         except json.JSONDecodeError:
             logger.warning("Claude returned non-JSON: %s", response_text[:200])
             data = {"keyword": query, "requires_reasoning": False, "rephrased_query": query}

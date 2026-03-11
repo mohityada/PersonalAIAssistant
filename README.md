@@ -79,7 +79,7 @@ uvicorn app.main:app --reload --port 8000
 
 ### 6. Start the Celery worker (separate terminal)
 ```bash
-celery -A app.workers.celery_app worker --loglevel=info
+OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES celery -A app.workers.celery_app worker --loglevel=info
 ```
 
 ### 7. Open Swagger UI

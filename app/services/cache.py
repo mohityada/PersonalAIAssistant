@@ -64,6 +64,43 @@ class CacheService:
         await self._redis.setex(key, self._embedding_ttl, json.dumps(vector))
         logger.debug("Embedding cache SET: %s (ttl=%ds)", key, self._embedding_ttl)
 
+    # ── ask cache & recent ──────────────────────────
+
+    async def get_cached_ask(self, user_id: str, question: str, filters: dict | None = None) -> dict | None:
+        """Return a cached RAG response payload or None."""
+        key = cache_key("ask", user_id, question, json.dumps(filters or {}, sort_keys=True))
+        raw = await self._redis.get(key)
+        if raw:
+            logger.debug("Ask cache HIT: %s", key)
+            return json.loads(raw)
+        logger.debug("Ask cache MISS: %s", key)
+        return None
+
+    async def set_cached_ask(
+        self, user_id: str, question: str, filters: dict | None, response: dict
+    ) -> None:
+        """Store the final generated ask payload."""
+        key = cache_key("ask", user_id, question, json.dumps(filters or {}, sort_keys=True))
+        await self._redis.setex(key, self._query_ttl, json.dumps(response))
+        logger.debug("Ask cache SET: %s (ttl=%ds)", key, self._query_ttl)
+        
+    async def add_recent_ask(self, user_id: str, question: str) -> None:
+        """Add a question to the user's recent tasks list (max 10 elements)."""
+        list_key = f"recent_asks:{user_id}"
+        
+        # Check if the exact question is already in the list
+        items = await self._redis.lrange(list_key, 0, -1)
+        if question in items:
+            await self._redis.lrem(list_key, 1, question)
+            
+        await self._redis.lpush(list_key, question)
+        await self._redis.ltrim(list_key, 0, 9)
+
+    async def get_recent_asks(self, user_id: str) -> list[str]:
+        """Get the user's recent 10 questions."""
+        list_key = f"recent_asks:{user_id}"
+        return await self._redis.lrange(list_key, 0, -1)
+
     # ── generic helpers ─────────────────────────────
 
     async def get(self, key: str) -> str | None:

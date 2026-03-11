@@ -5,9 +5,29 @@ const API_BASE = "http://localhost:8000/api/v1";
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
-const apiKeyInput = $("#api-key-input");
-const apiKeyToggle = $("#api-key-toggle");
-const apiStatus = $("#api-status");
+const authButtons = $("#auth-buttons");
+const authLoginBtn = $("#auth-login-btn");
+const authUser = $("#auth-user");
+const authEmailDisplay = $("#auth-email-display");
+const authLogoutBtn = $("#auth-logout-btn");
+
+const authModal = $("#auth-modal");
+const closeModalBtn = $("#close-modal-btn");
+const tabLogin = $("#tab-login");
+const tabRegister = $("#tab-register");
+const authForm = $("#auth-form");
+const nameGroup = $("#name-group");
+const authName = $("#auth-name");
+const authEmail = $("#auth-email");
+const authPassword = $("#auth-password");
+const confirmPasswordGroup = $("#confirm-password-group");
+const authConfirmPassword = $("#auth-confirm-password");
+const authSubmitBtn = $("#auth-submit-btn");
+const authError = $("#auth-error");
+
+const mainContent = $("#main-content");
+const faqList = $("#faq-list");
+const recentAsksList = $("#recent-asks-list");
 const themeToggle = $("#theme-toggle");
 const themeIcon = themeToggle.querySelector(".theme-icon");
 
@@ -56,41 +76,134 @@ themeToggle.addEventListener("click", () => {
 const savedTheme = localStorage.getItem("pai-theme") || "light";
 setTheme(savedTheme);
 
-/* ── API Key ───────────────────────────────────────── */
+/* ── Auth Flow ─────────────────────────────────────── */
 
-function getApiKey() {
-    return apiKeyInput.value.trim();
+let isLoginMode = true;
+let currentToken = localStorage.getItem("pai-token") || null;
+let currentUser = localStorage.getItem("pai-user") || null;
+
+function updateAuthState() {
+    if (currentToken) {
+        authButtons.hidden = true;
+        authUser.hidden = false;
+        authEmailDisplay.textContent = currentUser || "User";
+        mainContent.style.opacity = "1";
+        mainContent.style.pointerEvents = "auto";
+        loadRecentAsks();
+    } else {
+        authButtons.hidden = false;
+        authUser.hidden = true;
+        authEmailDisplay.textContent = "";
+        mainContent.style.opacity = "0.5";
+        mainContent.style.pointerEvents = "none";
+    }
 }
 
-apiKeyToggle.addEventListener("click", () => {
-    const type = apiKeyInput.type === "password" ? "text" : "password";
-    apiKeyInput.type = type;
-    apiKeyToggle.textContent = type === "password" ? "👁" : "🔒";
+function openAuthModal() {
+    authModal.hidden = false;
+    authEmail.focus();
+}
+
+function closeAuthModal() {
+    authModal.hidden = true;
+    authError.hidden = true;
+    authForm.reset();
+}
+
+authLoginBtn.addEventListener("click", openAuthModal);
+closeModalBtn.addEventListener("click", closeAuthModal);
+authLogoutBtn.addEventListener("click", () => {
+    currentToken = null;
+    currentUser = null;
+    localStorage.removeItem("pai-token");
+    localStorage.removeItem("pai-user");
+    updateAuthState();
 });
 
-apiKeyInput.addEventListener("input", () => {
-    if (getApiKey()) {
-        apiStatus.textContent = "Ready";
-        apiStatus.className = "api-status connected";
-    } else {
-        apiStatus.textContent = "";
-        apiStatus.className = "api-status";
+tabLogin.addEventListener("click", () => {
+    isLoginMode = true;
+    tabLogin.classList.add("active");
+    tabRegister.classList.remove("active");
+    nameGroup.hidden = true;
+    confirmPasswordGroup.hidden = true;
+    authName.required = false;
+    authConfirmPassword.required = false;
+    authSubmitBtn.textContent = "Login";
+    authError.hidden = true;
+});
+
+tabRegister.addEventListener("click", () => {
+    isLoginMode = false;
+    tabRegister.classList.add("active");
+    tabLogin.classList.remove("active");
+    nameGroup.hidden = false;
+    confirmPasswordGroup.hidden = false;
+    authName.required = true;
+    authConfirmPassword.required = true;
+    authSubmitBtn.textContent = "Register";
+    authError.hidden = true;
+});
+
+authForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    authError.hidden = true;
+    authSubmitBtn.disabled = true;
+    authSubmitBtn.textContent = "Processing...";
+
+    try {
+        let endpoint, body;
+        if (isLoginMode) {
+            endpoint = "/auth/login";
+            body = new URLSearchParams();
+            body.append("username", authEmail.value);
+            body.append("password", authPassword.value);
+        } else {
+            if (authPassword.value !== authConfirmPassword.value) {
+                authError.textContent = "Passwords do not match";
+                authError.hidden = false;
+                authSubmitBtn.disabled = false;
+                authSubmitBtn.textContent = "Register";
+                return;
+            }
+            endpoint = "/auth/register";
+            body = JSON.stringify({
+                name: authName.value,
+                email: authEmail.value,
+                password: authPassword.value,
+                confirm_password: authConfirmPassword.value
+            });
+        }
+
+        const res = await fetch(`${API_BASE}${endpoint}`, {
+            method: "POST",
+            headers: isLoginMode ? { "Content-Type": "application/x-www-form-urlencoded" } : { "Content-Type": "application/json" },
+            body
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: res.statusText }));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        currentToken = data.access_token;
+        currentUser = data.user_name || authEmail.value;
+        localStorage.setItem("pai-token", currentToken);
+        localStorage.setItem("pai-user", currentUser);
+        
+        closeAuthModal();
+        updateAuthState();
+        showToast(isLoginMode ? "Logged in successfully" : "Registered successfully");
+    } catch (err) {
+        authError.textContent = err.message;
+        authError.hidden = false;
+    } finally {
+        authSubmitBtn.disabled = false;
+        authSubmitBtn.textContent = isLoginMode ? "Login" : "Register";
     }
 });
 
-// Load saved API key
-const savedKey = localStorage.getItem("pai-api-key");
-if (savedKey) {
-    apiKeyInput.value = savedKey;
-    apiStatus.textContent = "Ready";
-    apiStatus.className = "api-status connected";
-}
-
-apiKeyInput.addEventListener("change", () => {
-    localStorage.setItem("pai-api-key", getApiKey());
-});
-
-/* ── Tabs ──────────────────────────────────────────── */
+updateAuthState();
 
 $$(".tab").forEach((tab) => {
     tab.addEventListener("click", () => {
@@ -112,17 +225,25 @@ function showToast(message, type = "success") {
     }, 3000);
 }
 
-/* ── API Helpers ───────────────────────────────────── */
-
 async function apiRequest(endpoint, options = {}) {
-    const key = getApiKey();
-    if (!key) {
-        showToast("Please enter your API key first", "error");
-        throw new Error("No API key");
+    if (!currentToken) {
+        openAuthModal();
+        throw new Error("No token");
     }
 
-    const headers = { "X-API-Key": key, ...options.headers };
-    const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+    const headers = { "Authorization": `Bearer ${currentToken}`, ...options.headers };
+    let res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+
+    // Handle token expiration
+    if (res.status === 401) {
+        currentToken = null;
+        currentUser = null;
+        localStorage.removeItem("pai-token");
+        localStorage.removeItem("pai-user");
+        updateAuthState();
+        openAuthModal();
+        throw new Error("Session expired. Please log in again.");
+    }
 
     if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -318,7 +439,7 @@ async function doAsk() {
                 <div class="answer-label">🤖 AI Answer</div>
                 <div class="answer-text">${escapeHtml(data.answer)}</div>
                 <div class="answer-meta">
-                    ${data.reasoning_used ? "🧠 Claude reasoning used" : "⚡ Direct retrieval (no LLM cost)"}
+                    ${data.cached ? "⚡ Served from exact match Cache" : (data.reasoning_used ? "🧠 Claude reasoning used" : "⚡ Direct retrieval")}
                     · ${data.sources.length} source(s)
                 </div>
             </div>
@@ -330,8 +451,47 @@ async function doAsk() {
         }
 
         askResults.innerHTML = html;
+        loadRecentAsks(); // reload list
     } catch (err) {
         askResults.innerHTML = `<div class="result-card upload-error"><div class="result-text">${err.message}</div></div>`;
+    }
+}
+
+/* ── FAQ & Recent Asks ─────────────────────────────── */
+
+function triggerPredefinedQuestion(q) {
+    if (!currentToken) {
+        openAuthModal();
+        return;
+    }
+    document.querySelector('.tab[data-tab="ask"]').click(); // switch tab
+    askInput.value = q;
+    doAsk();
+}
+
+faqList.addEventListener("click", (e) => {
+    if (e.target.tagName === "LI") {
+        triggerPredefinedQuestion(e.target.textContent);
+    }
+});
+
+recentAsksList.addEventListener("click", (e) => {
+    if (e.target.tagName === "LI" && !e.target.classList.contains("empty-state-list")) {
+        triggerPredefinedQuestion(e.target.textContent);
+    }
+});
+
+async function loadRecentAsks() {
+    if (!currentToken) return;
+    try {
+        const asks = await apiRequest("/recent-asks");
+        if (asks && asks.length > 0) {
+            recentAsksList.innerHTML = asks.map(a => `<li>${escapeHtml(a)}</li>`).join("");
+        } else {
+            recentAsksList.innerHTML = `<li class="empty-state-list">No questions asked recently. Ask something!</li>`;
+        }
+    } catch (err) {
+        console.error("Failed to load recent asks:", err);
     }
 }
 
@@ -348,7 +508,11 @@ function fileIcon(type) {
 }
 
 function escapeHtml(str) {
+    if (!str) return "";
     const div = document.createElement("div");
     div.textContent = str;
-    return div.innerHTML;
+    let html = div.innerHTML;
+    // Parse markdown bold (**text**) into HTML strong tags
+    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    return html;
 }

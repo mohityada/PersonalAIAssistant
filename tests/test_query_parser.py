@@ -16,7 +16,7 @@ class TestQueryParser:
         with patch("app.services.query_parser.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(
                 anthropic_api_key="test-key",
-                claude_model="claude-sonnet-4-20250514",
+                claude_model="claude-3-haiku-20240307",
             )
             return QueryParser(cache=mock_cache)
 

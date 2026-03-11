@@ -8,8 +8,10 @@ from qdrant_client.http.models import (
     Distance,
     FieldCondition,
     Filter,
+    MatchText,
     MatchValue,
     PointStruct,
+    TextIndexParams,
     VectorParams,
 )
 
@@ -39,6 +41,17 @@ class VectorStoreService:
                     size=self._vector_size,
                     distance=Distance.COSINE,
                 ),
+            )
+            self._client.create_payload_index(
+                collection_name=self._collection,
+                field_name="filename",
+                field_schema=TextIndexParams(
+                    type="text",
+                    tokenizer="word",
+                    min_token_len=2,
+                    max_token_len=40,
+                    lowercase=True,
+                )
             )
             logger.info("Created Qdrant collection '%s'", self._collection)
         else:
@@ -89,9 +102,14 @@ class VectorStoreService:
         ]
         if filters:
             for key, value in filters.items():
-                must_conditions.append(
-                    FieldCondition(key=key, match=MatchValue(value=value))
-                )
+                if key == "filename":
+                    must_conditions.append(
+                        FieldCondition(key=key, match=MatchText(text=value))
+                    )
+                else:
+                    must_conditions.append(
+                        FieldCondition(key=key, match=MatchValue(value=value))
+                    )
 
         response = self._client.query_points(
             collection_name=self._collection,

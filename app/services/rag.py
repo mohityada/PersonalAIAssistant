@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 _RAG_SYSTEM_PROMPT = """\
 You are a helpful personal AI assistant. Answer the user's question using ONLY the provided context.
 If the context does not contain enough information, say so honestly.
-Be concise but thorough. Cite the source filenames in your answer when relevant.
+Provide a concise, specific, and direct answer to their exact question instead of just repeating the context. Cite the source filenames in your answer when relevant.
 """
 
 # Maximum context chars sent to Claude to keep costs down
@@ -98,6 +98,14 @@ class RAGService:
         self, question: str, user_id: str, filters: dict | None = None
     ) -> AskResponse:
         """Full RAG pipeline: parse → search → conditionally reason with Claude."""
+        # 0. Check semantic ask cache first
+        if self._cache:
+            cached = await self._cache.get_cached_ask(user_id, question, filters)
+            if cached:
+                cached["cached"] = True
+                await self._cache.add_recent_ask(user_id, question)
+                return AskResponse(**cached)
+
         # 1. Parse intent
         intent: ParsedIntent = await self._parser.parse(question)
         merged_filters = self._merge_filters(intent, filters)
@@ -121,12 +129,16 @@ class RAGService:
                 chunk = r.chunk_text or r.caption or ""
                 summary_parts.append(f"- **{r.filename}**: {chunk[:200]}")
             answer = "\n".join(summary_parts) if summary_parts else "No relevant results found."
-            return AskResponse(
+            response = AskResponse(
                 question=question,
                 answer=answer,
                 sources=self._results_to_sources(results),
                 reasoning_used=False,
             )
+            if self._cache:
+                await self._cache.set_cached_ask(user_id, question, filters, response.model_dump(mode="json"))
+                await self._cache.add_recent_ask(user_id, question)
+            return response
 
         # 4. Build context for Claude (truncate to stay within budget)
         context = self._build_context(results)
@@ -146,12 +158,19 @@ class RAGService:
         )
         answer = message.content[0].text.strip()
 
-        return AskResponse(
+        response = AskResponse(
             question=question,
             answer=answer,
             sources=self._results_to_sources(results),
             reasoning_used=True,
         )
+        
+        # 6. Store in cache
+        if self._cache:
+            await self._cache.set_cached_ask(user_id, question, filters, response.model_dump(mode="json"))
+            await self._cache.add_recent_ask(user_id, question)
+            
+        return response
 
     # ── private helpers ─────────────────────────────
 
@@ -163,6 +182,8 @@ class RAGService:
             merged["file_type"] = intent.file_type
         if intent.location:
             merged["location"] = intent.location
+        if intent.filename:
+            merged["filename"] = intent.filename
         if explicit:
             merged.update(explicit)
         return merged or None

@@ -66,6 +66,14 @@ def create_app() -> FastAPI:
     async def health():
         return {"status": "healthy"}
 
+    from fastapi.responses import PlainTextResponse
+    import traceback
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request, exc):
+        err = traceback.format_exc()
+        print("GLOBAL ERROR:", err)
+        return PlainTextResponse(err, status_code=500)
+
     return app
 
 

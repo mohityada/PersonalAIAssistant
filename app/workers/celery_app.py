@@ -1,5 +1,9 @@
 """Celery application configuration."""
 
+import os
+# Fix for macOS SIGABRT during multiprocessing fork with Objective-C frameworks (PyTorch, PyMuPDF)
+os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
+
 from celery import Celery
 
 from app.config import get_settings

@@ -232,8 +232,21 @@ class RAGService:
         parts: list[str] = []
         total = 0
         for r in results:
-            text = r.chunk_text or r.caption or ""
-            entry = f"[{r.filename}]\n{text}\n"
+            if r.file_type == "image":
+                # For images, build a richer context block
+                lines = [f"[{r.filename}]"]
+                if r.caption:
+                    lines.append(f"Caption: {r.caption}")
+                if r.chunk_text and r.chunk_text != r.caption:
+                    lines.append(r.chunk_text)
+                if r.location:
+                    lines.append(f"Location: {r.location}")
+                if r.tags:
+                    lines.append(f"Tags: {', '.join(r.tags)}")
+                entry = "\n".join(lines) + "\n"
+            else:
+                text = r.chunk_text or r.caption or ""
+                entry = f"[{r.filename}]\n{text}\n"
             if total + len(entry) > _MAX_CONTEXT_CHARS:
                 break
             parts.append(entry)

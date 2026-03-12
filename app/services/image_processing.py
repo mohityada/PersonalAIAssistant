@@ -1,4 +1,4 @@
-"""Image processing: EXIF extraction, YOLO object detection, and caption generation."""
+"""Image processing: EXIF extraction, BLIP captioning, and YOLO object detection."""
 
 import io
 import logging
@@ -85,6 +85,42 @@ def _parse_datetime_from_exif(exif: dict) -> datetime | None:
     return None
 
 
+# ── BLIP image captioning ─────────────────────────────
+
+_blip_processor = None
+_blip_model = None
+
+
+def _get_blip_model():
+    """Lazy-load the BLIP image-captioning model."""
+    global _blip_processor, _blip_model
+    if _blip_model is None:
+        from transformers import BlipProcessor, BlipForConditionalGeneration
+
+        model_name = "Salesforce/blip-image-captioning-base"
+        logger.info("Loading BLIP captioning model: %s ...", model_name)
+        _blip_processor = BlipProcessor.from_pretrained(model_name)
+        _blip_model = BlipForConditionalGeneration.from_pretrained(model_name)
+        logger.info("BLIP model loaded")
+    return _blip_processor, _blip_model
+
+
+def _generate_blip_caption(img: Image.Image) -> str:
+    """Generate a natural-language caption using BLIP."""
+    try:
+        processor, model = _get_blip_model()
+        # Convert to RGB if necessary (BLIP requires RGB)
+        rgb_img = img.convert("RGB") if img.mode != "RGB" else img
+        inputs = processor(rgb_img, return_tensors="pt")
+        output_ids = model.generate(**inputs, max_new_tokens=50)
+        caption = processor.decode(output_ids[0], skip_special_tokens=True).strip()
+        logger.info("BLIP caption: %s", caption)
+        return caption
+    except Exception:
+        logger.exception("BLIP captioning failed, falling back to YOLO-only")
+        return ""
+
+
 # ── YOLO object detection ─────────────────────────────
 
 _yolo_model = None
@@ -116,12 +152,9 @@ def _detect_objects(img: Image.Image, confidence: float = 0.35) -> list[str]:
 
 
 def _generate_caption_from_objects(objects: list[str], image_size: tuple[int, int]) -> str:
-    """Build a descriptive caption from detected objects.
-
-    Uses YOLO detection results to compose a natural language caption.
-    """
+    """Fallback caption from YOLO objects when BLIP captioning fails."""
     if not objects:
-        return "An image with no clearly identifiable objects."
+        return "An image which is not properly detecable."
 
     w, h = image_size
     orientation = "landscape" if w > h else "portrait" if h > w else "square"
@@ -143,8 +176,9 @@ async def process_image(file_bytes: bytes) -> ImageMetadata:
 
     Steps:
         1. Open the image and extract EXIF metadata (GPS → location, datetime).
-        2. Run YOLO object detection to identify objects in the image.
-        3. Generate a caption from detected objects.
+        2. Generate a natural-language caption using BLIP.
+        3. Run YOLO object detection for supplementary object tags.
+        4. If BLIP caption is empty, fall back to YOLO-based caption.
 
     Returns:
         ``ImageMetadata`` with caption, detected objects, location, and timestamp.
@@ -157,11 +191,16 @@ async def process_image(file_bytes: bytes) -> ImageMetadata:
     location = _parse_location_from_exif(exif)
     timestamp = _parse_datetime_from_exif(exif)
 
-    # 2) Object detection
-    objects = _detect_objects(img)
+    # 2) BLIP captioning (primary)
+    caption = _generate_blip_caption(img)
 
-    # 3) Caption
-    caption = _generate_caption_from_objects(objects, (width, height))
+    
+
+    # 3) Fallback: if BLIP failed, build caption from YOLO objects
+    if not caption:
+        # 4) YOLO object detection (supplementary tags)
+        objects = _detect_objects(img)
+        caption = _generate_caption_from_objects(objects, (width, height))
 
     metadata = ImageMetadata(
         caption=caption,
@@ -171,5 +210,8 @@ async def process_image(file_bytes: bytes) -> ImageMetadata:
         width=width,
         height=height,
     )
-    logger.info("Image processed: %dx%d, %d objects, location=%s", width, height, len(objects), location)
+    logger.info(
+        "Image processed: %dx%d, caption='%s', %d objects, location=%s",
+        width, height, caption[:80], len(objects), location,
+    )
     return metadata

@@ -35,19 +35,21 @@ def _get_sync_session():
 
 def _embed_text_sync(text: str) -> list[float]:
     """Embed text synchronously (no Redis cache in worker context)."""
+    import torch
     from sentence_transformers import SentenceTransformer
     from app.config import get_settings
     settings = get_settings()
-    model = SentenceTransformer(settings.embedding_model)
+    model = SentenceTransformer(settings.embedding_model, device="cpu")
     return model.encode(text, normalize_embeddings=True).tolist()
 
 
 def _embed_batch_sync(texts: list[str]) -> list[list[float]]:
     """Batch embed texts synchronously."""
+    import torch
     from sentence_transformers import SentenceTransformer
     from app.config import get_settings
     settings = get_settings()
-    model = SentenceTransformer(settings.embedding_model)
+    model = SentenceTransformer(settings.embedding_model, device="cpu")
     return model.encode(texts, normalize_embeddings=True).tolist()
 
 
@@ -116,6 +118,8 @@ def ingest_file(self, file_id: str) -> dict:
 def _ingest_document_sync(session, file_record, file_bytes, vector_store) -> dict:
     """Text document ingestion: extract → chunk → embed → store."""
     text = extract_text(file_bytes, file_record.original_filename)
+    # Strip NUL bytes — PostgreSQL text columns reject \x00
+    text = text.replace("\x00", "")
     if not text.strip():
         logger.warning("No text extracted from %s", file_record.original_filename)
         return {"file_id": str(file_record.id), "status": "empty", "chunks": 0}
@@ -166,22 +170,36 @@ def _ingest_document_sync(session, file_record, file_bytes, vector_store) -> dic
 
 
 def _ingest_image_sync(session, file_record, file_bytes, vector_store) -> dict:
-    """Image ingestion: EXIF + YOLO → embed caption → store."""
+    """Image ingestion: BLIP caption + YOLO objects → embed → store in Qdrant."""
     metadata = _process_image_sync(file_bytes)
 
     # Update File record
+    location = metadata.location or file_record.location
     session.execute(
         update(File).where(File.id == file_record.id).values(
             caption=metadata.caption,
             objects=metadata.objects,
-            location=metadata.location or file_record.location,
+            location=location,
         )
     )
     session.commit()
 
-    embed_text = metadata.caption
+    # Build rich embedding text: caption + objects + filename + location
+    # This gives the embedding model much more to work with for semantic search.
+    parts = []
+    if metadata.caption:
+        parts.append(metadata.caption)
     if metadata.objects:
-        embed_text += " " + " ".join(metadata.objects)
+        parts.append("Objects: " + ", ".join(metadata.objects))
+    # Include original filename (often descriptive, e.g. "sunset_beach_2024.jpg")
+    stem = file_record.original_filename.rsplit(".", 1)[0].replace("_", " ").replace("-", " ")
+    parts.append(f"Filename: {stem}")
+    if location:
+        parts.append(f"Location: {location}")
+    if file_record.tags:
+        parts.append("Tags: " + ", ".join(file_record.tags))
+
+    embed_text = ". ".join(parts)
 
     vector = _embed_text_sync(embed_text)
     vector_id = uuid.uuid4()
@@ -209,14 +227,14 @@ def _ingest_image_sync(session, file_record, file_bytes, vector_store) -> dict:
                 "caption": metadata.caption,
                 "chunk_text": embed_text,
                 "objects": metadata.objects,
-                "location": metadata.location or file_record.location,
+                "location": location,
                 "tags": file_record.tags,
             },
         }]))
     finally:
         loop.close()
 
-    logger.info("Image ingestion complete: %s", file_record.original_filename)
+    logger.info("Image ingestion complete: %s (caption=%s)", file_record.original_filename, metadata.caption[:60])
     return {
         "file_id": str(file_record.id),
         "status": "complete",

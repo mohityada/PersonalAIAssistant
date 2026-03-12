@@ -3,6 +3,9 @@
 import os
 # Fix for macOS SIGABRT during multiprocessing fork with Objective-C frameworks (PyTorch, PyMuPDF)
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
+# Force CPU for PyTorch — MPS (Metal) crashes in forked Celery workers on macOS
+os.environ["PYTORCH_MPS_DISABLE"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from celery import Celery
 

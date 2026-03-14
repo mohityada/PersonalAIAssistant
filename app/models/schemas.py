@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ── Upload ──────────────────────────────────────────────
@@ -16,6 +16,21 @@ class UploadResponse(BaseModel):
     file_type: str
     status: str = "processing"
     message: str = "File uploaded and queued for ingestion."
+
+
+# ── Files ────────────────────────────────────────────────
+
+
+class FileInfo(BaseModel):
+    id: UUID
+    filename: str
+    file_type: str
+    tags: list[str] | None = None
+    location: str | None = None
+    caption: str | None = None
+    created_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Search ──────────────────────────────────────────────

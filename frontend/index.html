@@ -12,12 +12,12 @@
     <!-- Header -->
     <header class="header">
         <div class="header-left">
-            <span class="logo">🧠</span>
+            <span class="logo"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M7 9H5M7 12H5M7 15H5M9 7V5M12 7V5M15 7V5M17 9h2M17 12h2M17 15h2M9 17v2M12 17v2M15 17v2"/></svg></span>
             <h1 class="app-title">Personal AI Assistant</h1>
         </div>
         <div class="header-right">
             <button id="theme-toggle" class="theme-btn" title="Toggle theme">
-                <span class="theme-icon">🌙</span>
+                <span class="theme-icon"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
             </button>
             <div id="auth-buttons" class="auth-buttons">
                 <button id="auth-login-btn" class="btn btn-secondary btn-sm">Sign In / Register</button>
@@ -67,28 +67,220 @@
     </div>
 
     <!-- Main Content -->
-    <main class="main" id="main-content" style="opacity: 0.5; pointer-events: none;">
-        <!-- Tab Navigation -->
+    <main class="main">
+        <!-- Tab Navigation (always visible, no auth lock) -->
         <nav class="tabs">
-            <button class="tab active" data-tab="upload">
-                <span class="tab-icon">📤</span> Upload
+            <button class="tab active" data-tab="home">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Home
+            </button>
+            <button class="tab" data-tab="upload">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload
             </button>
             <button class="tab" data-tab="search">
-                <span class="tab-icon">🔍</span> Search
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Search
             </button>
             <button class="tab" data-tab="ask">
-                <span class="tab-icon">💬</span> Ask
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Ask
+            </button>
+            <button class="tab" data-tab="files">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> Files
             </button>
         </nav>
 
+        <!-- ═══ HOME PANEL (no auth required) ═══════════════════════════ -->
+        <section id="panel-home" class="panel active">
+
+            <!-- Hero -->
+            <div class="home-hero">
+                <div class="home-hero-badge">
+                    <span class="home-badge-dot"></span>
+                    Personal · Private · Grounded in Your Data
+                </div>
+                <h2 class="home-headline">
+                    Your AI that knows<br>
+                    <span class="home-headline-accent">your documents</span>
+                </h2>
+                <p class="home-subtext">
+                    Upload PDFs, images, notes, and more. Ask questions in plain English.
+                    Get cited answers — and when uncertain, the AI asks you to clarify
+                    instead of making things up.
+                </p>
+                <div class="home-cta-group">
+                    <button class="btn btn-primary home-cta-primary" id="home-get-started-btn">
+                        Get Started
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </button>
+                    <button class="btn home-cta-secondary" id="home-explore-btn">
+                        See how it works ↓
+                    </button>
+                </div>
+            </div>
+
+            <!-- Honest AI Banner -->
+            <div class="home-honest-banner">
+                <div class="honest-banner-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="honest-banner-body">
+                    <strong>Asks before it assumes</strong>
+                    <p>When a question is vague or could match multiple documents, the AI pauses and asks clarifying questions — instead of hallucinating an answer.</p>
+                </div>
+                <div class="honest-banner-check">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    No hallucinations
+                </div>
+            </div>
+
+            <!-- Features Grid -->
+            <div id="home-features" class="home-features-section">
+                <p class="home-section-label">CAPABILITIES</p>
+                <h3 class="home-section-title">Everything you need to work smarter</h3>
+                <div class="home-features-grid">
+                    <div class="home-feature-card">
+                        <div class="home-feature-icon home-feature-icon-blue">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
+                        <h4>Document Intelligence</h4>
+                        <p>Upload PDFs, Word docs, images, CSV files, and plain text. Automatic extraction, chunking, and semantic indexing — ready in seconds.</p>
+                    </div>
+                    <div class="home-feature-card">
+                        <div class="home-feature-icon home-feature-icon-purple">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        </div>
+                        <h4>Semantic Search</h4>
+                        <p>Find information by meaning and context, not just keywords. Results are ranked by conceptual relevance to your query.</p>
+                    </div>
+                    <div class="home-feature-card home-feature-card-highlight">
+                        <div class="home-feature-icon home-feature-icon-accent">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        </div>
+                        <h4>Grounded Q&amp;A</h4>
+                        <p>Answers are backed by citations from your own documents. When uncertain, the AI asks clarifying questions — never makes up information.</p>
+                        <span class="home-feature-badge">No Hallucinations</span>
+                    </div>
+                    <div class="home-feature-card">
+                        <div class="home-feature-icon home-feature-icon-green">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                        <h4>Private by Design</h4>
+                        <p>Your files are stored with strict per-user isolation. Only you can access your documents, search history, and conversations.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Demo -->
+            <div class="home-demo-section" id="home-demo">
+                <p class="home-section-label">LIVE DEMO</p>
+                <h3 class="home-section-title">See how the AI handles uncertainty</h3>
+                <p class="home-section-sub">Try a question — watch the AI answer directly when it's confident, or ask a clarifying question when it's not.</p>
+                <div class="home-demo-card">
+                    <div class="demo-chips-row">
+                        <span class="demo-chips-label">Try:</span>
+                        <button class="demo-chip" data-demo="What is the revenue forecast for Q3?">📈 Revenue forecast Q3</button>
+                        <button class="demo-chip" data-demo="List action items from the meeting">📋 Meeting action items</button>
+                        <button class="demo-chip" data-demo="Tell me about the project">💡 Tell me about the project</button>
+                        <button class="demo-chip" data-demo="What happened last week?">📅 What happened last week?</button>
+                    </div>
+                    <div class="demo-input-row">
+                        <input type="text" id="demo-input" class="input" placeholder="Type a question to try the demo…">
+                        <button class="btn btn-primary demo-send-btn" id="demo-send-btn">Try it</button>
+                    </div>
+                    <div class="demo-chat-area" id="demo-chat-area">
+                        <div class="demo-empty-state">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            <p>Click a suggestion or type a question above</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- How It Works -->
+            <div class="home-steps-section" id="home-how-it-works">
+                <p class="home-section-label">HOW IT WORKS</p>
+                <h3 class="home-section-title">Three steps to smarter knowledge work</h3>
+                <div class="home-steps-grid">
+                    <div class="home-step-card">
+                        <div class="home-step-num">01</div>
+                        <div class="home-step-icon-wrap">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </div>
+                        <h4>Upload Your Documents</h4>
+                        <p>Drop in PDFs, Word docs, images, or paste text directly. Everything is extracted and indexed automatically in the background.</p>
+                    </div>
+                    <div class="home-step-connector">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </div>
+                    <div class="home-step-card">
+                        <div class="home-step-num">02</div>
+                        <div class="home-step-icon-wrap">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        </div>
+                        <h4>Ask in Plain English</h4>
+                        <p>Ask any question naturally. The AI searches your documents semantically to find the most relevant information for your query.</p>
+                    </div>
+                    <div class="home-step-connector">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </div>
+                    <div class="home-step-card">
+                        <div class="home-step-num">03</div>
+                        <div class="home-step-icon-wrap">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <h4>Get Honest Answers</h4>
+                        <p>Receive cited answers from your own data. When uncertain, the AI asks for clarification instead of hallucinating — always trustworthy.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer CTA -->
+            <div class="home-footer-cta">
+                <h3>Ready to explore your documents?</h3>
+                <p>Sign in to start building your personal knowledge base.</p>
+                <div class="home-cta-group">
+                    <button class="btn btn-primary home-cta-primary" id="home-footer-cta-btn">
+                        Sign In / Register
+                    </button>
+                </div>
+            </div>
+
+        </section>
+        <!-- ═══ END HOME PANEL ══════════════════════════════════════════ -->
+
+        <!-- Auth-locked operational panels -->
+        <div id="main-content" style="display: none;">
+
         <!-- Upload Panel -->
-        <section id="panel-upload" class="panel active">
-            <div class="upload-zone" id="drop-zone">
-                <div class="upload-icon">📁</div>
-                <p class="upload-text">Drag & drop files here</p>
-                <p class="upload-sub">or click to browse</p>
-                <p class="upload-formats">PDF, DOCX, TXT, MD, Images (JPG, PNG, WebP)</p>
-                <input type="file" id="file-input" multiple accept=".pdf,.docx,.txt,.md,.csv,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp" hidden>
+        <section id="panel-upload" class="panel">
+            <div class="upload-mode-tabs">
+                <button class="upload-mode-tab active" id="mode-file">File Upload</button>
+                <button class="upload-mode-tab" id="mode-text">Text Upload</button>
+            </div>
+
+            <div id="file-upload-section">
+                <div class="upload-zone" id="drop-zone">
+                    <div class="upload-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
+                    <p class="upload-text">Drag & drop files here</p>
+                    <p class="upload-sub">or click to browse</p>
+                    <p class="upload-formats">PDF, DOCX, TXT, MD, Images (JPG, PNG, WebP)</p>
+                    <input type="file" id="file-input" multiple accept=".pdf,.docx,.txt,.md,.csv,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp" hidden>
+                </div>
+                <button id="upload-btn" class="btn btn-primary" disabled>Upload Files</button>
+            </div>
+
+            <div id="text-upload-section" hidden>
+                <div class="text-upload-form">
+                    <div class="input-group">
+                        <label for="text-filename-input">File Name <span class="input-hint">.txt will be appended</span></label>
+                        <input type="text" id="text-filename-input" class="input" placeholder="e.g. meeting-notes">
+                    </div>
+                    <div class="input-group">
+                        <label for="text-content-input">Content</label>
+                        <textarea id="text-content-input" class="input textarea text-upload-textarea" placeholder="Write or paste your text content here..."></textarea>
+                    </div>
+                    <button id="text-upload-btn" class="btn btn-primary" disabled>Upload as .txt</button>
+                </div>
             </div>
 
             <div class="upload-options">
@@ -101,10 +293,6 @@
                     <input type="text" id="location-input" class="input" placeholder="e.g. Jaipur, Delhi">
                 </div>
             </div>
-
-            <button id="upload-btn" class="btn btn-primary" disabled>
-                <span class="btn-icon">⬆️</span> Upload Files
-            </button>
 
             <!-- Upload Progress -->
             <div id="upload-progress" class="progress-area" hidden>
@@ -122,9 +310,7 @@
         <section id="panel-search" class="panel">
             <div class="search-bar">
                 <input type="text" id="search-input" class="input search-input" placeholder="Search your documents and images...">
-                <button id="search-btn" class="btn btn-primary">
-                    <span class="btn-icon">🔍</span> Search
-                </button>
+                <button id="search-btn" class="btn btn-primary">Search</button>
             </div>
             <div class="search-options">
                 <div class="input-group inline">
@@ -154,36 +340,48 @@
         <section id="panel-ask" class="panel">
             <div class="ask-area">
                 <textarea id="ask-input" class="input textarea" placeholder="Ask a question about your uploaded data..." rows="3"></textarea>
-                <button id="ask-btn" class="btn btn-primary">
-                    <span class="btn-icon">💬</span> Ask AI
-                </button>
+                <button id="ask-btn" class="btn btn-primary">Ask AI</button>
             </div>
             <div id="ask-results" class="results-area"></div>
         </section>
         
+        <!-- Files Panel -->
+        <section id="panel-files" class="panel">
+            <div class="files-toolbar">
+                <h3 class="files-title">My Files</h3>
+                <button id="files-refresh-btn" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.87"/></svg> Refresh</button>
+            </div>
+            <div id="files-list" class="results-area">
+                <div class="empty-state">
+                    <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    <p>Click "Files" tab to load your uploaded files.</p>
+                </div>
+            </div>
+        </section>
+
         <!-- Bottom Info Container -->
         <div class="bottom-info-container">
             <div class="info-card faq-section">
-                <h3>❓ Frequently Asked Questions</h3>
+                <h3>Frequently Asked Questions</h3>
                 <ul class="clickable-list" id="faq-list">
-                    <li>Tell me the name of person whose CV is this</li>
-                    <li>What are the top 3 skills mentioned in the resume?</li>
-                    <li>Extract all email addresses from the uploaded files.</li>
+                    <li class="empty-state-list">Loading suggestions…</li>
                 </ul>
             </div>
             <div class="info-card recent-section">
-                <h3>🕒 Recently Asked Questions</h3>
+                <h3>Recently Asked</h3>
                 <ul class="clickable-list" id="recent-asks-list">
                     <li class="empty-state-list">No questions asked recently. Ask something!</li>
                 </ul>
             </div>
         </div>
 
+        </div><!-- /#main-content -->
     </main>
 
     <!-- Toast Notification -->
     <div id="toast" class="toast" hidden></div>
 
+    <script src="env.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

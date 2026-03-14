@@ -43,6 +43,8 @@ class File(Base):
     file_type = Column(String(20), nullable=False, index=True)  # text, pdf, docx, image, md, etc.
     file_path = Column(String(500), nullable=False)  # S3 key
     original_filename = Column(String(500), nullable=False)
+    status = Column(String(20), nullable=False, default="processing", server_default="processing")
+    error_message = Column(Text, nullable=True)
     caption = Column(Text, nullable=True)
     objects = Column(JSON, nullable=True)  # Detected objects for images
     location = Column(String(255), nullable=True)

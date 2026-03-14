@@ -29,8 +29,15 @@ class StorageService:
 
     @staticmethod
     def _build_key(user_id: UUID, file_id: UUID, filename: str) -> str:
-        """Build the S3 object key: storage/<user_id>/<file_id>/<filename>."""
-        return f"storage/{user_id}/{file_id}/{filename}"
+        """Build the S3 object key with proper category folder.
+
+        Pattern: uploads/<category>/<user_id>/<file_id>/<filename>
+        Categories: images | documents
+        """
+        from pathlib import Path
+        _IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"}
+        category = "images" if Path(filename).suffix.lower() in _IMAGE_EXTS else "documents"
+        return f"uploads/{category}/{user_id}/{file_id}/{filename}"
 
     # ── public API ──────────────────────────────────
 

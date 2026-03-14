@@ -1,14 +1,21 @@
-"""Image processing: EXIF extraction, BLIP captioning, and YOLO object detection."""
+"""Image processing: EXIF extraction, BLIP-2 captioning, and YOLO object detection."""
+
+from __future__ import annotations
 
 import io
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from PIL import Image
-from PIL.ExifTags import TAGS, GPSTAGS
+if TYPE_CHECKING:
+    from PIL.Image import Image as PILImage
 
 logger = logging.getLogger(__name__)
+
+# Maximum dimension (width or height) before we resize for captioning.
+# Larger images waste memory without improving caption quality.
+_MAX_CAPTION_DIM = 768
 
 
 @dataclass
@@ -37,8 +44,10 @@ def _dms_to_decimal(dms_tuple, ref: str) -> float | None:
         return None
 
 
-def _extract_exif(img: Image.Image) -> dict:
+def _extract_exif(img: PILImage) -> dict:
     """Extract useful EXIF data from a PIL Image."""
+    from PIL.ExifTags import GPSTAGS, TAGS
+
     exif_data: dict = {}
     raw_exif = img.getexif()
     if not raw_exif:
@@ -85,39 +94,121 @@ def _parse_datetime_from_exif(exif: dict) -> datetime | None:
     return None
 
 
-# ── BLIP image captioning ─────────────────────────────
+# ── Image pre-processing ─────────────────────────────
+
+
+def _resize_for_captioning(img: PILImage) -> PILImage:
+    """Down-scale the image so the longest side is at most _MAX_CAPTION_DIM.
+
+    Keeps aspect ratio. Returns the original image if already small enough.
+    This prevents excessive memory usage in the captioning model without
+    degrading caption quality (BLIP-2 internally resizes to 364px anyway).
+    """
+    w, h = img.size
+    if max(w, h) <= _MAX_CAPTION_DIM:
+        return img
+
+    from PIL import Image as PILImageModule
+
+    scale = _MAX_CAPTION_DIM / max(w, h)
+    new_size = (int(w * scale), int(h * scale))
+    return img.resize(new_size, PILImageModule.LANCZOS)
+
+
+# ── BLIP-2 image captioning ──────────────────────────
 
 _blip_processor = None
 _blip_model = None
 
 
 def _get_blip_model():
-    """Lazy-load the BLIP image-captioning model."""
+    """Lazy-load the BLIP-2 image-captioning model (OPT-2.7B backbone).
+
+    BLIP-2 produces significantly more accurate and descriptive captions
+    compared to the original BLIP-base model.
+    """
     global _blip_processor, _blip_model
     if _blip_model is None:
-        from transformers import BlipProcessor, BlipForConditionalGeneration
+        try:
+            from transformers import Blip2ForConditionalGeneration, Blip2Processor
+        except ImportError as exc:
+            raise ImportError(
+                "The 'transformers' package is required for image captioning. "
+                "Install it with: pip install transformers"
+            ) from exc
 
-        model_name = "Salesforce/blip-image-captioning-base"
-        logger.info("Loading BLIP captioning model: %s ...", model_name)
-        _blip_processor = BlipProcessor.from_pretrained(model_name)
-        _blip_model = BlipForConditionalGeneration.from_pretrained(model_name)
-        logger.info("BLIP model loaded")
+        import torch
+
+        model_name = "Salesforce/blip2-opt-2.7b"
+        logger.info("Loading BLIP-2 captioning model: %s ...", model_name)
+
+        _blip_processor = Blip2Processor.from_pretrained(model_name)
+
+        # Use float16 when CUDA is available, otherwise float32 on CPU
+        dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        _blip_model = Blip2ForConditionalGeneration.from_pretrained(
+            model_name,
+            torch_dtype=dtype,
+        ).to(device)
+
+        logger.info("BLIP-2 model loaded on %s (dtype=%s)", device, dtype)
     return _blip_processor, _blip_model
 
 
-def _generate_blip_caption(img: Image.Image) -> str:
-    """Generate a natural-language caption using BLIP."""
+def _generate_blip_caption(img: PILImage) -> str:
+    """Generate a natural-language caption using BLIP-2.
+
+    Uses beam search with a conditional prompt for higher quality output.
+    """
     try:
+        import torch
+
         processor, model = _get_blip_model()
-        # Convert to RGB if necessary (BLIP requires RGB)
+        device = next(model.parameters()).device
+
+        # Convert to RGB (BLIP-2 requires RGB input)
         rgb_img = img.convert("RGB") if img.mode != "RGB" else img
-        inputs = processor(rgb_img, return_tensors="pt")
-        output_ids = model.generate(**inputs, max_new_tokens=50)
+
+        # Resize to avoid excessive memory usage
+        rgb_img = _resize_for_captioning(rgb_img)
+
+        # Conditional prompt guides the model toward descriptive captions
+        inputs = processor(
+            images=rgb_img,
+            text="a photograph of",
+            return_tensors="pt",
+        ).to(device, dtype=torch.float16 if device.type == "cuda" else torch.float32)
+
+        output_ids = model.generate(
+            **inputs,
+            max_new_tokens=80,
+            num_beams=5,
+            length_penalty=1.2,
+            repetition_penalty=1.5,
+            early_stopping=True,
+        )
         caption = processor.decode(output_ids[0], skip_special_tokens=True).strip()
-        logger.info("BLIP caption: %s", caption)
+
+        # Remove the prompt prefix if the model echoed it back
+        prefix = "a photograph of"
+        if caption.lower().startswith(prefix):
+            caption = caption[len(prefix):].strip()
+
+        # Capitalize first letter
+        if caption:
+            caption = caption[0].upper() + caption[1:]
+
+        logger.info("BLIP-2 caption: %s", caption)
         return caption
+    except ImportError:
+        logger.error(
+            "transformers package not installed — skipping BLIP-2 captioning"
+        )
+        return ""
     except Exception:
-        logger.exception("BLIP captioning failed, falling back to YOLO-only")
+        logger.exception("BLIP-2 captioning failed, falling back to YOLO-only")
         return ""
 
 
@@ -130,31 +221,47 @@ def _get_yolo_model():
     """Lazy-load YOLOv8 nano model."""
     global _yolo_model
     if _yolo_model is None:
-        from ultralytics import YOLO
+        try:
+            from ultralytics import YOLO
+        except ImportError as exc:
+            raise ImportError(
+                "The 'ultralytics' package is required for object detection. "
+                "Install it with: pip install ultralytics"
+            ) from exc
+
         logger.info("Loading YOLOv8n model...")
         _yolo_model = YOLO("yolov8n.pt")
         logger.info("YOLOv8n model loaded")
     return _yolo_model
 
 
-def _detect_objects(img: Image.Image, confidence: float = 0.35) -> list[str]:
+def _detect_objects(img: PILImage, confidence: float = 0.35) -> list[str]:
     """Run YOLOv8 on an image and return unique detected class names."""
-    model = _get_yolo_model()
-    results = model.predict(source=img, conf=confidence, verbose=False)
-    detected: set[str] = set()
-    for result in results:
-        for box in result.boxes:
-            cls_id = int(box.cls[0])
-            cls_name = result.names[cls_id]
-            detected.add(cls_name)
-    logger.info("YOLO detected %d unique objects", len(detected))
-    return sorted(detected)
+    try:
+        model = _get_yolo_model()
+    except ImportError:
+        logger.error("ultralytics package not installed — skipping object detection")
+        return []
+
+    try:
+        results = model.predict(source=img, conf=confidence, verbose=False)
+        detected: set[str] = set()
+        for result in results:
+            for box in result.boxes:
+                cls_id = int(box.cls[0])
+                cls_name = result.names[cls_id]
+                detected.add(cls_name)
+        logger.info("YOLO detected %d unique objects", len(detected))
+        return sorted(detected)
+    except Exception:
+        logger.exception("YOLO object detection failed")
+        return []
 
 
 def _generate_caption_from_objects(objects: list[str], image_size: tuple[int, int]) -> str:
     """Fallback caption from YOLO objects when BLIP captioning fails."""
     if not objects:
-        return "An image which is not properly detecable."
+        return "An image that could not be automatically described."
 
     w, h = image_size
     orientation = "landscape" if w > h else "portrait" if h > w else "square"
@@ -176,13 +283,15 @@ async def process_image(file_bytes: bytes) -> ImageMetadata:
 
     Steps:
         1. Open the image and extract EXIF metadata (GPS → location, datetime).
-        2. Generate a natural-language caption using BLIP.
-        3. Run YOLO object detection for supplementary object tags.
-        4. If BLIP caption is empty, fall back to YOLO-based caption.
+        2. Run YOLO object detection for supplementary object tags.
+        3. Generate a natural-language caption using BLIP-2.
+        4. If BLIP-2 caption is empty, fall back to YOLO-based caption.
 
     Returns:
         ``ImageMetadata`` with caption, detected objects, location, and timestamp.
     """
+    from PIL import Image
+
     img = Image.open(io.BytesIO(file_bytes))
     width, height = img.size
 
@@ -191,15 +300,14 @@ async def process_image(file_bytes: bytes) -> ImageMetadata:
     location = _parse_location_from_exif(exif)
     timestamp = _parse_datetime_from_exif(exif)
 
-    # 2) BLIP captioning (primary)
+    # 2) YOLO object detection (always run — objects enrich RAG payloads)
+    objects = _detect_objects(img)
+
+    # 3) BLIP-2 captioning (primary)
     caption = _generate_blip_caption(img)
 
-    
-
-    # 3) Fallback: if BLIP failed, build caption from YOLO objects
+    # 4) Fallback: if BLIP-2 failed, build caption from YOLO objects
     if not caption:
-        # 4) YOLO object detection (supplementary tags)
-        objects = _detect_objects(img)
         caption = _generate_caption_from_objects(objects, (width, height))
 
     metadata = ImageMetadata(

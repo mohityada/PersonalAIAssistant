@@ -21,13 +21,11 @@ from app.services.vector_store import VectorStoreService
 logger = logging.getLogger(__name__)
 
 _RAG_SYSTEM_PROMPT = """\
-You are a helpful personal AI assistant. Answer the user's question using ONLY the provided context.
-If the context does not contain enough information, say so honestly.
-Provide a concise, specific, and direct answer to their exact question instead of just repeating the context. Cite the source filenames in your answer when relevant.
+Answer using ONLY the provided context. Be concise, specific, and direct. Cite source filenames when relevant. If context is insufficient, say so.
 """
 
 # Maximum context chars sent to Claude to keep costs down
-_MAX_CONTEXT_CHARS = 6000
+_MAX_CONTEXT_CHARS = 4000
 
 
 class RAGService:

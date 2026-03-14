@@ -104,6 +104,14 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
+    min-width: 0;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
 }
 
 .logo {
@@ -1067,17 +1075,90 @@ body {
 
 /* ─── Responsive ───────────────────────────────────────── */
 
-@media (max-width: 640px) {
+/* Tablet */
+@media (max-width: 768px) {
+    .main {
+        padding: 20px 24px 80px;
+    }
+
     .header {
-        padding: 12px 16px;
+        padding: 14px 24px;
     }
 
     .api-bar {
+        padding: 10px 24px;
+    }
+
+    .modal-content {
+        max-width: calc(100vw - 48px);
+    }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+    body {
+        overflow-x: hidden;
+    }
+
+    .header {
         padding: 10px 16px;
     }
 
+    .app-title {
+        font-size: 16px;
+    }
+
+    .header-right {
+        gap: 8px;
+    }
+
+    .auth-email {
+        max-width: 110px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .api-bar {
+        padding: 8px 16px;
+    }
+
+    .api-bar-inner {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .api-label {
+        width: 100%;
+    }
+
+    .api-status {
+        width: 100%;
+    }
+
     .main {
-        padding: 16px;
+        padding: 14px 16px 80px;
+    }
+
+    /* Scrollable horizontal tabs instead of vertical stack */
+    .tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        flex-direction: row;
+        gap: 4px;
+        padding: 4px;
+    }
+
+    .tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab {
+        flex: 0 0 auto;
+        padding: 9px 12px;
+        font-size: 13px;
+        gap: 5px;
     }
 
     .upload-options {
@@ -1090,6 +1171,8 @@ body {
 
     .search-bar .btn {
         margin-top: 0;
+        width: 100%;
+        justify-content: center;
     }
 
     .search-options {
@@ -1097,12 +1180,65 @@ body {
         gap: 12px;
     }
 
-    .tabs {
-        flex-direction: column;
-    }
-
     .bottom-info-container {
         grid-template-columns: 1fr;
+    }
+
+    .modal-content {
+        max-width: calc(100vw - 24px);
+        margin: 12px;
+        max-height: calc(100vh - 24px);
+        overflow-y: auto;
+    }
+
+    .result-header {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .ask-area .btn {
+        width: 100%;
+        justify-content: center;
+        align-self: stretch;
+    }
+
+    .file-actions {
+        flex-wrap: wrap;
+    }
+
+    .btn-file-view,
+    .btn-file-delete {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .answer-card {
+        padding: 16px;
+    }
+
+    .result-card {
+        padding: 14px;
+    }
+
+    .files-toolbar {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+}
+
+/* Extra-small mobile */
+@media (max-width: 400px) {
+    .app-title {
+        display: none;
+    }
+
+    .header-left {
+        gap: 8px;
+    }
+
+    .tab {
+        padding: 8px 10px;
+        font-size: 12px;
     }
 }
 
@@ -1793,14 +1929,55 @@ body {
 
 /* ─── Home Panel Responsive ────────────────────────────── */
 
+@media (max-width: 768px) {
+    .home-hero {
+        padding: 52px 0 40px;
+    }
+
+    .home-headline {
+        font-size: 42px;
+    }
+
+    .home-section-title {
+        font-size: 24px;
+    }
+
+    .home-footer-cta h3 {
+        font-size: 26px;
+    }
+
+    .home-features-grid {
+        gap: 12px;
+    }
+}
+
 @media (max-width: 640px) {
     .home-headline {
-        font-size: 34px;
-        letter-spacing: -1px;
+        font-size: 30px;
+        letter-spacing: -0.8px;
+    }
+
+    .home-subtext {
+        font-size: 15px;
+        margin-bottom: 28px;
     }
 
     .home-hero {
-        padding: 48px 0 36px;
+        padding: 36px 0 24px;
+    }
+
+    .home-cta-primary {
+        font-size: 14px;
+        padding: 12px 20px;
+    }
+
+    .home-cta-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .home-cta-secondary {
+        text-align: center;
     }
 
     .home-features-grid {
@@ -1820,10 +1997,68 @@ body {
 
     .home-honest-banner {
         flex-wrap: wrap;
+        padding: 16px;
     }
 
     .honest-banner-check {
         width: 100%;
         padding-top: 4px;
+    }
+
+    .home-section-title {
+        font-size: 21px;
+        letter-spacing: -0.3px;
+    }
+
+    .home-section-sub {
+        font-size: 14px;
+    }
+
+    .home-footer-cta h3 {
+        font-size: 22px;
+    }
+
+    .home-footer-cta {
+        padding: 40px 0 24px;
+    }
+
+    .home-footer-cta p {
+        font-size: 14px;
+    }
+
+    /* Demo section */
+    .demo-input-row {
+        flex-direction: column;
+    }
+
+    .demo-send-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .demo-chips-row {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 4px;
+    }
+
+    .demo-chips-row::-webkit-scrollbar {
+        display: none;
+    }
+
+    .home-demo-card {
+        padding: 16px;
+    }
+
+    .home-features-section,
+    .home-demo-section,
+    .home-steps-section {
+        margin-bottom: 40px;
+    }
+
+    .home-honest-banner {
+        margin-bottom: 40px;
     }
 }

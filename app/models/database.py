@@ -66,6 +66,7 @@ class Chunk(Base):
     chunk_text = Column(Text, nullable=False)
     vector_id = Column(UUID(as_uuid=True), nullable=False, unique=True, default=uuid.uuid4)
     chunk_index = Column(Integer, nullable=False)
+    source = Column(String(20), nullable=True)  # "text", "ocr", "caption"
 
     file = relationship("File", back_populates="chunks")
 

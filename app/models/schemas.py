@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class UploadResponse(BaseModel):
     file_id: UUID
+    job_id: str
     filename: str
     file_type: str
     status: str = "processing"

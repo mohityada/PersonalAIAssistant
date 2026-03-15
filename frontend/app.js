@@ -347,7 +347,7 @@ uploadBtn.addEventListener("click", async () => {
                 body: formData,
             });
             uploadResults.innerHTML += createUploadCard(result, true);
-            startIngestionPoll(result.file_id);
+            startIngestionPoll(result.file_id, result.job_id);
         } catch (err) {
             uploadResults.innerHTML += createUploadCard({ filename: file.name, error: err.message }, false);
         }
@@ -416,7 +416,7 @@ textUploadBtn.addEventListener("click", async () => {
         const result = await apiRequest("/upload", { method: "POST", body: formData });
         progressFill.style.width = "100%";
         uploadResults.innerHTML += createUploadCard(result, true);
-        startIngestionPoll(result.file_id);
+        startIngestionPoll(result.file_id, result.job_id);
         progressText.textContent = "Upload complete!";
         showToast(`${filename}.txt uploaded successfully`);
         setTimeout(() => {
@@ -624,7 +624,7 @@ async function loadFaqSuggestions() {
 
 /* ── Ingestion Status Polling ──────────────────────────── */
 
-function startIngestionPoll(fileId) {
+function startIngestionPoll(fileId, jobId) {
     // Cancel any existing poll for this file
     if (_ingestionPolls.has(fileId)) {
         clearInterval(_ingestionPolls.get(fileId));
@@ -636,13 +636,32 @@ function startIngestionPoll(fileId) {
     const id = setInterval(async () => {
         attempts++;
         try {
-            const data = await apiRequest(`/files/${fileId}/status`);
-            updateIngestionCard(fileId, data.status, data.error_message);
+            let pollStatus, errorMsg;
 
-            if (data.status === "complete" || data.status === "failed") {
+            // Use job_id polling (Celery task status) when available
+            if (jobId) {
+                const data = await apiRequest(`/jobs/${jobId}`);
+                if (data.state === "SUCCESS") {
+                    pollStatus = "complete";
+                } else if (data.state === "FAILURE") {
+                    pollStatus = "failed";
+                    errorMsg = data.error;
+                } else {
+                    // PENDING / STARTED / RETRY → still processing
+                    pollStatus = "processing";
+                }
+            } else {
+                const data = await apiRequest(`/files/${fileId}/status`);
+                pollStatus = data.status;
+                errorMsg = data.error_message;
+            }
+
+            updateIngestionCard(fileId, pollStatus, errorMsg);
+
+            if (pollStatus === "complete" || pollStatus === "failed") {
                 clearInterval(id);
                 _ingestionPolls.delete(fileId);
-                if (data.status === "complete") loadFaqSuggestions();
+                if (pollStatus === "complete") loadFaqSuggestions();
             }
         } catch {
             // stop polling on auth errors / network failure

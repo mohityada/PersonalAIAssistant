@@ -16,6 +16,7 @@ from app.models.database import File as FileModel, User
 from app.models.schemas import FileInfo
 from app.services.storage import StorageService
 from app.services.vector_store import VectorStoreService
+from app.workers.celery_app import celery_app
 from app.workers.tasks import ingest_file
 
 logger = logging.getLogger(__name__)
@@ -136,9 +137,9 @@ async def retry_ingestion(
     file_record.status = "processing"
     file_record.error_message = None
     await db.commit()
-    ingest_file.delay(str(file_id))
-    logger.info("Retrying ingestion for file %s", file_id)
-    return {"file_id": str(file_id), "status": "processing"}
+    task = ingest_file.delay(str(file_id))
+    logger.info("Retrying ingestion for file %s (job_id=%s)", file_id, task.id)
+    return {"file_id": str(file_id), "job_id": task.id, "status": "processing"}
 
 
 @router.get("/{file_id}/view")

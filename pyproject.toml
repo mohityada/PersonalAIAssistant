@@ -39,6 +39,10 @@ dependencies = [
     "python-docx>=1.1.0",
     "Pillow>=10.2.0",
 
+    # PDF visual layer
+    "pymupdf>=1.24.0",
+    "easyocr>=1.7.0",
+
     # Image processing
     "ultralytics>=8.1.0",
     "transformers>=4.36.0",

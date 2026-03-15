@@ -102,7 +102,7 @@ def _resize_for_captioning(img: PILImage) -> PILImage:
 
     Keeps aspect ratio. Returns the original image if already small enough.
     This prevents excessive memory usage in the captioning model without
-    degrading caption quality (BLIP-2 internally resizes to 364px anyway).
+    degrading caption quality (BLIP internally resizes to 384px anyway).
     """
     w, h = img.size
     if max(w, h) <= _MAX_CAPTION_DIM:
@@ -115,22 +115,23 @@ def _resize_for_captioning(img: PILImage) -> PILImage:
     return img.resize(new_size, PILImageModule.LANCZOS)
 
 
-# ── BLIP-2 image captioning ──────────────────────────
+# ── BLIP image captioning (lightweight base model) ───
 
 _blip_processor = None
 _blip_model = None
 
 
 def _get_blip_model():
-    """Lazy-load the BLIP-2 image-captioning model (OPT-2.7B backbone).
+    """Lazy-load the BLIP-base image-captioning model.
 
-    BLIP-2 produces significantly more accurate and descriptive captions
-    compared to the original BLIP-base model.
+    Uses Salesforce/blip-image-captioning-base (~990 MB) instead of
+    BLIP-2 OPT-2.7B (~15 GB) for significantly faster loading and
+    inference, especially on CPU-only workers.
     """
     global _blip_processor, _blip_model
     if _blip_model is None:
         try:
-            from transformers import Blip2ForConditionalGeneration, Blip2Processor
+            from transformers import BlipForConditionalGeneration, BlipProcessor
         except ImportError as exc:
             raise ImportError(
                 "The 'transformers' package is required for image captioning. "
@@ -139,26 +140,25 @@ def _get_blip_model():
 
         import torch
 
-        model_name = "Salesforce/blip2-opt-2.7b"
-        logger.info("Loading BLIP-2 captioning model: %s ...", model_name)
+        model_name = "Salesforce/blip-image-captioning-base"
+        logger.info("Loading BLIP captioning model: %s ...", model_name)
 
-        _blip_processor = Blip2Processor.from_pretrained(model_name)
+        _blip_processor = BlipProcessor.from_pretrained(model_name)
 
-        # Use float16 when CUDA is available, otherwise float32 on CPU
-        dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+        dtype = torch.float32  # BLIP-base runs well in float32 even on CPU
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        _blip_model = Blip2ForConditionalGeneration.from_pretrained(
+        _blip_model = BlipForConditionalGeneration.from_pretrained(
             model_name,
             torch_dtype=dtype,
         ).to(device)
 
-        logger.info("BLIP-2 model loaded on %s (dtype=%s)", device, dtype)
+        logger.info("BLIP model loaded on %s (dtype=%s)", device, dtype)
     return _blip_processor, _blip_model
 
 
 def _generate_blip_caption(img: PILImage) -> str:
-    """Generate a natural-language caption using BLIP-2.
+    """Generate a natural-language caption using BLIP-base.
 
     Uses beam search with a conditional prompt for higher quality output.
     """
@@ -168,7 +168,7 @@ def _generate_blip_caption(img: PILImage) -> str:
         processor, model = _get_blip_model()
         device = next(model.parameters()).device
 
-        # Convert to RGB (BLIP-2 requires RGB input)
+        # Convert to RGB (BLIP requires RGB input)
         rgb_img = img.convert("RGB") if img.mode != "RGB" else img
 
         # Resize to avoid excessive memory usage
@@ -179,13 +179,12 @@ def _generate_blip_caption(img: PILImage) -> str:
             images=rgb_img,
             text="a photograph of",
             return_tensors="pt",
-        ).to(device, dtype=torch.float16 if device.type == "cuda" else torch.float32)
+        ).to(device)
 
         output_ids = model.generate(
             **inputs,
-            max_new_tokens=80,
-            num_beams=5,
-            length_penalty=1.2,
+            max_new_tokens=50,
+            num_beams=4,
             repetition_penalty=1.5,
             early_stopping=True,
         )
@@ -200,15 +199,15 @@ def _generate_blip_caption(img: PILImage) -> str:
         if caption:
             caption = caption[0].upper() + caption[1:]
 
-        logger.info("BLIP-2 caption: %s", caption)
+        logger.info("BLIP caption: %s", caption)
         return caption
     except ImportError:
         logger.error(
-            "transformers package not installed — skipping BLIP-2 captioning"
+            "transformers package not installed — skipping BLIP captioning"
         )
         return ""
     except Exception:
-        logger.exception("BLIP-2 captioning failed, falling back to YOLO-only")
+        logger.exception("BLIP captioning failed, falling back to YOLO-only")
         return ""
 
 
@@ -275,6 +274,126 @@ def _generate_caption_from_objects(objects: list[str], image_size: tuple[int, in
         return f"A {orientation} image containing {items}."
 
 
+# ── EasyOCR text recognition ─────────────────────────
+
+_ocr_reader = None
+
+
+def _get_ocr_reader():
+    """Lazy-load EasyOCR reader (English)."""
+    global _ocr_reader
+    if _ocr_reader is None:
+        try:
+            import easyocr
+        except ImportError as exc:
+            raise ImportError(
+                "The 'easyocr' package is required for OCR. "
+                "Install it with: pip install easyocr"
+            ) from exc
+
+        logger.info("Loading EasyOCR reader...")
+        _ocr_reader = easyocr.Reader(["en"], gpu=False, verbose=False)
+        logger.info("EasyOCR reader loaded")
+    return _ocr_reader
+
+
+def run_ocr_on_image(img: PILImage) -> str:
+    """Run OCR on a PIL Image and return extracted text.
+
+    Uses EasyOCR (pure-Python, no Tesseract binary required).
+    Returns empty string on failure or if no text is found.
+    """
+    import numpy as np
+
+    try:
+        reader = _get_ocr_reader()
+    except ImportError:
+        logger.error("easyocr not installed — skipping OCR")
+        return ""
+
+    try:
+        rgb_img = img.convert("RGB") if img.mode != "RGB" else img
+        img_array = np.array(rgb_img)
+        results = reader.readtext(img_array, detail=0, paragraph=True)
+        text = "\n".join(results).strip()
+        logger.info("OCR extracted %d chars", len(text))
+        return text
+    except Exception:
+        logger.exception("OCR failed")
+        return ""
+
+
+# ── Figure detection + crop ───────────────────────────
+
+# YOLO classes that typically correspond to figure-like regions
+_FIGURE_CLASSES = frozenset({
+    "book", "clock", "tv", "laptop", "cell phone",
+    "keyboard", "mouse", "remote",
+})
+
+# Minimum crop area (pixels) to bother captioning a cropped figure
+_MIN_CROP_AREA = 80 * 80
+
+
+def detect_figures_and_crop(img: PILImage) -> list[PILImage]:
+    """Run YOLO on a rendered PDF page and crop detected figure regions.
+
+    Returns a list of cropped PIL Images for objects that look like
+    figures, charts, or embedded images. Returns an empty list when
+    no meaningful regions are found.
+    """
+    try:
+        model = _get_yolo_model()
+    except ImportError:
+        return []
+
+    try:
+        results = model.predict(source=img, conf=0.30, verbose=False)
+        crops: list = []
+        for result in results:
+            for box in result.boxes:
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                w = x2 - x1
+                h = y2 - y1
+                if w * h < _MIN_CROP_AREA:
+                    continue
+                crop = img.crop((int(x1), int(y1), int(x2), int(y2)))
+                crops.append(crop)
+        logger.info("YOLO detected %d figure crops on page", len(crops))
+        return crops
+    except Exception:
+        logger.exception("Figure detection/crop failed")
+        return []
+
+
+# ── PDF image processing pipeline ────────────────────
+
+
+@dataclass
+class PDFImageResult:
+    """Analysis results for a single image extracted from a PDF."""
+    caption: str = ""
+    objects: list[str] = field(default_factory=list)
+    ocr_text: str = ""
+
+
+def process_pdf_image(img: PILImage) -> PDFImageResult:
+    """Process a single image from a PDF: YOLO → BLIP → OCR.
+
+    This is the synchronous counterpart of ``process_image`` but
+    tailored for images extracted from PDF pages (no EXIF, no async).
+
+    Returns:
+        ``PDFImageResult`` with caption, detected objects, and OCR text.
+    """
+    objects = _detect_objects(img)
+    caption = _generate_blip_caption(img)
+    if not caption:
+        caption = _generate_caption_from_objects(objects, img.size)
+    ocr_text = run_ocr_on_image(img)
+    return PDFImageResult(caption=caption, objects=objects, ocr_text=ocr_text)
+
+
 # ── public API ──────────────────────────────────────
 
 
@@ -303,10 +422,10 @@ async def process_image(file_bytes: bytes) -> ImageMetadata:
     # 2) YOLO object detection (always run — objects enrich RAG payloads)
     objects = _detect_objects(img)
 
-    # 3) BLIP-2 captioning (primary)
+    # 3) BLIP captioning (primary)
     caption = _generate_blip_caption(img)
 
-    # 4) Fallback: if BLIP-2 failed, build caption from YOLO objects
+    # 4) Fallback: if BLIP failed, build caption from YOLO objects
     if not caption:
         caption = _generate_caption_from_objects(objects, (width, height))
 

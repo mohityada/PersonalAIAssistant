@@ -97,11 +97,12 @@ async def upload_file(
     await db.commit()
 
     # Dispatch background ingestion
-    ingest_file.delay(str(file_record.id))
+    task = ingest_file.delay(str(file_record.id))
 
-    logger.info("Upload accepted: %s → %s (task queued)", filename, s3_key)
+    logger.info("Upload accepted: %s → %s (job_id=%s)", filename, s3_key, task.id)
     return UploadResponse(
         file_id=file_record.id,
+        job_id=task.id,
         filename=filename,
         file_type=file_type,
     )

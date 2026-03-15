@@ -32,3 +32,57 @@ celery_app.conf.update(
 
 # Auto-discover tasks in the workers package
 celery_app.autodiscover_tasks(["app.workers"])
+
+
+# ---------------------------------------------------------------------------
+# Pre-load models at worker startup (avoids first-request latency)
+# ---------------------------------------------------------------------------
+
+from celery.signals import worker_process_init  # noqa: E402
+
+import logging  # noqa: E402
+_logger = logging.getLogger(__name__)
+
+
+@worker_process_init.connect
+def _preload_models(**kwargs):
+    """Eagerly load ML models when a Celery worker process starts.
+
+    This prevents the first task from bearing the full model-loading
+    latency (which can cause API timeouts).
+    """
+    _logger.info("Worker starting — pre-loading ML models...")
+
+    # 1) Sentence-transformer embedding model
+    try:
+        from app.workers.tasks import EmbeddingModelManager
+        EmbeddingModelManager()
+        _logger.info("Embedding model pre-loaded.")
+    except Exception:
+        _logger.exception("Failed to pre-load embedding model")
+
+    # 2) BLIP captioning model
+    try:
+        from app.services.image_processing import _get_blip_model
+        _get_blip_model()
+        _logger.info("BLIP captioning model pre-loaded.")
+    except Exception:
+        _logger.exception("Failed to pre-load BLIP model")
+
+    # 3) YOLO object detection model
+    try:
+        from app.services.image_processing import _get_yolo_model
+        _get_yolo_model()
+        _logger.info("YOLO model pre-loaded.")
+    except Exception:
+        _logger.exception("Failed to pre-load YOLO model")
+
+    # 4) EasyOCR reader
+    try:
+        from app.services.image_processing import _get_ocr_reader
+        _get_ocr_reader()
+        _logger.info("OCR reader pre-loaded.")
+    except Exception:
+        _logger.exception("Failed to pre-load OCR reader")
+
+    _logger.info("Worker model pre-loading complete.")
